@@ -510,13 +510,13 @@ int s1ap_mme_handle_s1_setup_request(
     enb_association->enb_name[s1SetupRequest_p->eNBname.size] = '\0';
   }
   // associating one more key i.e enb_id with enb_association
-  hashtable_rc_t hash_rc = hashtable_ts_insert(
-    &state->enbs,
-    (const hash_key_t) enb_id,
-    (void *) enb_association);
-  if (HASH_TABLE_OK != hash_rc) {
-    OAILOG_FUNC_RETURN(LOG_S1AP, RETURNerror);
-  }
+  //hashtable_rc_t hash_rc = hashtable_ts_insert(
+  //  &state->enbs,
+  //  (const hash_key_t) enb_id,
+  //  (void *) enb_association);
+  //if (HASH_TABLE_OK != hash_rc) {
+  //  OAILOG_FUNC_RETURN(LOG_S1AP, RETURNerror);
+  //}
 
   s1ap_dump_enb(enb_association);
   rc = s1ap_generate_s1_setup_response(state, enb_association);
@@ -2487,7 +2487,9 @@ void s1ap_enb_assoc_clean_up_timer_expiry(
 }
 //------------------------------------------------------------------------------
 
-int s1ap_handle_paging_request(const itti_s1ap_paging_request_t *paging_request)
+int s1ap_handle_paging_request(
+  s1ap_state_t *state,
+  const itti_s1ap_paging_request_t *paging_request)
 {
   OAILOG_FUNC_IN(LOG_S1AP);
   DevAssert(paging_request != NULL);
@@ -2561,17 +2563,39 @@ int s1ap_handle_paging_request(const itti_s1ap_paging_request_t *paging_request)
     return RETURNerror;
   }
 
-  bstring b = blk2bstr(buffer, length);
-  free(buffer);
-
-  // Send message
-  int rc = s1ap_mme_itti_send_sctp_request(
-    &b,
-    paging_request->sctp_assoc_id,
-    0,  // Stream id 0 for non UE related
-        // S1AP message
-    0); // mme_ue_s1ap_id 0 because UE
-        // in idle
+  /*Fetching eNB list to send paging request message*/
+  hashtable_element_array_t *enb_array = NULL; 
+  enb_description_t *enb_ref_p = NULL;
+  uint32_t idx = 0;
+  int rc;
+  if (state == NULL) {
+    OAILOG_DEBUG(
+      LOG_S1AP,
+      "eNB Information is NULL!\n");
+  } 
+  enb_array = hashtable_ts_get_elements(&state->enbs);
+  for (idx = 0; idx < enb_array->num_elements; idx++) {
+     bstring b = blk2bstr(buffer, length);
+     enb_ref_p = (enb_description_t *)(uintptr_t) enb_array->elements[idx];
+    if (enb_ref_p->s1_state == S1AP_READY) {
+    OAILOG_DEBUG(
+      LOG_S1AP,
+      "enb_ref_p->s1_state == S1AP_READY  (assoc_id = %d)\n", 
+      enb_ref_p->sctp_assoc_id);
+    OAILOG_INFO(
+      LOG_S1AP,
+      "Sending Paging Request message to eNB of sctp (assoc_id = %d)\n", 
+      enb_ref_p->sctp_assoc_id);
+    rc = s1ap_mme_itti_send_sctp_request(
+      &b,
+      enb_ref_p->sctp_assoc_id,//paging_request->sctp_assoc_id,
+      0,  // Stream id 0 for non UE related
+          // S1AP message
+      0); // mme_ue_s1ap_id 0 because UE
+          // in idle
+    }
+ }
+ free(buffer);
   if (rc != RETURNok) {
     OAILOG_ERROR(
       LOG_S1AP,
@@ -2583,6 +2607,7 @@ int s1ap_handle_paging_request(const itti_s1ap_paging_request_t *paging_request)
       "Sent paging message over sctp for IMSI %s\n",
       paging_request->imsi);
   }
+
   free_s1ap_paging(paging_message);
   OAILOG_FUNC_RETURN(LOG_S1AP, rc);
 }

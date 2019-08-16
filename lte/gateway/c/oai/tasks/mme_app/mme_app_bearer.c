@@ -1821,6 +1821,7 @@ int mme_app_paging_request_helper(
       LOG_MME_APP,
       "Paging process attempted for connected UE with id %d\n",
       ue_context_p->mme_ue_s1ap_id);
+    unlock_ue_contexts(ue_context_p);
     OAILOG_FUNC_RETURN(LOG_MME_APP, RETURNerror);
   }
   message_p = itti_alloc_new_message(TASK_MME_APP, S1AP_PAGING_REQUEST);
@@ -1863,6 +1864,7 @@ int mme_app_paging_request_helper(
       "Failed to start paging timer for ue %d\n",
       ue_context_p->mme_ue_s1ap_id);
   }
+  unlock_ue_contexts(ue_context_p);
   OAILOG_FUNC_RETURN(LOG_MME_APP, timer_rc);
 }
 
