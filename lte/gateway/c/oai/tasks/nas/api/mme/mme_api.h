@@ -100,6 +100,7 @@ typedef struct mme_api_emm_config_s {
   bstring full_network_name;
   bstring short_network_name;
   uint8_t daylight_saving_time;
+  uint8_t test_tai_management;
 } mme_api_emm_config_t;
 
 /*

@@ -248,6 +248,7 @@ void mme_config_init(mme_config_t *config)
   config->unauthenticated_imsi_supported = 0;
   config->relative_capacity = RELATIVE_CAPACITY;
   config->mme_statistic_timer = MME_STATISTIC_TIMER_S;
+  config->test_tai_management = 0;
 
   log_config_init(&config->log_config);
   eps_network_feature_config_init(&config->eps_network_feature_support);
@@ -569,6 +570,13 @@ int mme_config_parse_file(mme_config_t *config_pP)
           MME_CONFIG_STRING_UNAUTHENTICATED_IMSI_SUPPORTED,
           (const char **) &astring))) {
       config_pP->unauthenticated_imsi_supported = parse_bool(astring);
+    }
+
+    if ((config_setting_lookup_string(
+          setting_mme,
+          MME_CONFIG_STRING_TEST_TAI_MANAGEMENT,
+          (const char **) &astring))) {
+      config_pP->test_tai_management = parse_bool(astring);
     }
 
     // ITTI SETTING
@@ -1269,6 +1277,10 @@ void mme_config_display(mme_config_t *config_pP)
     LOG_CONFIG,
     "- Unauth IMSI support ..................: %s\n",
     config_pP->unauthenticated_imsi_supported == 0 ? "false" : "true");
+  OAILOG_INFO(
+    LOG_CONFIG,
+    "- Test TAI Management support ..................: %s\n",
+    config_pP->test_tai_management == 0 ? "false" : "true");
   OAILOG_INFO(
     LOG_CONFIG,
     "- Relative capa ........................: %u\n",

@@ -72,6 +72,9 @@
 #define MME_CONFIG_STRING_UNAUTHENTICATED_IMSI_SUPPORTED                       \
   "UNAUTHENTICATED_IMSI_SUPPORTED"
 
+#define MME_CONFIG_STRING_TEST_TAI_MANAGEMENT                                  \
+  "TEST_TAI_MANAGEMENT"
+
 #define EPS_NETWORK_FEATURE_SUPPORT_IMS_VOICE_OVER_PS_SESSION_IN_S1            \
   "EPS_NETWORK_FEATURE_SUPPORT_IMS_VOICE_OVER_PS_SESSION_IN_S1"
 #define EPS_NETWORK_FEATURE_SUPPORT_EMERGENCY_BEARER_SERVICES_IN_S1_MODE       \
@@ -296,6 +299,8 @@ typedef struct mme_config_s {
   lai_t lai;
 
   int use_stateless;
+
+  uint8_t test_tai_management;
 } mme_config_t;
 
 extern mme_config_t mme_config;
