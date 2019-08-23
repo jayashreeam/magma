@@ -21,6 +21,7 @@ import (
 	"magma/orc8r/cloud/go/serde"
 
 	"github.com/golang/glog"
+	"github.com/thoas/go-funk"
 	"google.golang.org/grpc"
 )
 
@@ -53,7 +54,7 @@ type StateID struct {
 var connSingleton = (*grpc.ClientConn)(nil)
 var connGuard = sync.Mutex{}
 
-func getStateClient() (protos.StateServiceClient, error) {
+func GetStateClient() (protos.StateServiceClient, error) {
 	if connSingleton == nil {
 		// Reading the conn optimistically to avoid unnecessary overhead
 		connGuard.Lock()
@@ -74,7 +75,7 @@ func getStateClient() (protos.StateServiceClient, error) {
 
 // GetState returns the state specified by the networkID, typeVal, and hwID
 func GetState(networkID string, typeVal string, hwID string) (State, error) {
-	client, err := getStateClient()
+	client, err := GetStateClient()
 	if err != nil {
 		return State{}, err
 	}
@@ -102,7 +103,7 @@ func GetState(networkID string, typeVal string, hwID string) (State, error) {
 
 // GetStates returns a map of states specified by the networkID and a list of type and key
 func GetStates(networkID string, stateIDs []StateID) (map[StateID]State, error) {
-	client, err := getStateClient()
+	client, err := GetStateClient()
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +132,7 @@ func GetStates(networkID string, stateIDs []StateID) (map[StateID]State, error) 
 
 // DeleteStates deletes states specified by the networkID and a list of type and key
 func DeleteStates(networkID string, stateIDs []StateID) error {
-	client, err := getStateClient()
+	client, err := GetStateClient()
 	if err != nil {
 		return err
 	}
@@ -153,13 +154,33 @@ func GetGatewayStatus(networkID string, deviceID string) (*models.GatewayStatus,
 	if state.ReportedState == nil {
 		return nil, errors.ErrNotFound
 	}
+	return fillInGatewayStatusState(state), nil
+}
+
+func GetGatewayStatuses(networkID string, deviceIDs []string) (map[string]*models.GatewayStatus, error) {
+	stateIDs := funk.Map(deviceIDs, func(id string) StateID { return StateID{Type: orc8r.GatewayStateType, DeviceID: id} }).([]StateID)
+	res, err := GetStates(networkID, stateIDs)
+	if err != nil {
+		return map[string]*models.GatewayStatus{}, err
+	}
+
+	ret := make(map[string]*models.GatewayStatus, len(res))
+	for stateID, state := range res {
+		ret[stateID.DeviceID] = fillInGatewayStatusState(state)
+	}
+	return ret, nil
+}
+
+func fillInGatewayStatusState(state State) *models.GatewayStatus {
+	if state.ReportedState == nil {
+		return nil
+	}
 
 	gwStatus := state.ReportedState.(*models.GatewayStatus)
 	gwStatus.CheckinTime = state.Time
 	gwStatus.CertExpirationTime = state.CertExpirationTime
-	// Use the hardware ID from the middleware
 	gwStatus.HardwareID = state.ReporterID
-	return gwStatus, nil
+	return gwStatus
 }
 
 func toProtosStateIDs(stateIDs []StateID) []*protos.StateID {
