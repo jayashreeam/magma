@@ -1843,7 +1843,111 @@ int mme_app_paging_request_helper(
     paging_request->paging_id = S1AP_PAGING_ID_IMSI;
   }
   paging_request->domain_indicator = domain_indicator;
+  // Passing TAI List
+  uint8_t numoflists = ue_context_p->emm_context._tai_list.numberoflists;
+  paging_request->supp_ta_list.numoflists = numoflists;
+  for (int i = 0; i < numoflists; i++) {
+    switch (ue_context_p->emm_context._tai_list.partial_tai_list[i].typeoflist) {
+      case TRACKING_AREA_IDENTITY_LIST_ONE_PLMN_NON_CONSECUTIVE_TACS:
+           paging_request->supp_ta_list.tai[i].mcc_digit1 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_non_consecutive_tacs.mcc_digit1;
+           paging_request->supp_ta_list.tai[i].mcc_digit2 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_non_consecutive_tacs.mcc_digit2;
+           paging_request->supp_ta_list.tai[i].mcc_digit3 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_non_consecutive_tacs.mcc_digit3;
+           paging_request->supp_ta_list.tai[i].mnc_digit1 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_non_consecutive_tacs.mnc_digit1;
+           paging_request->supp_ta_list.tai[i].mnc_digit2 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_non_consecutive_tacs.mnc_digit2;
+           paging_request->supp_ta_list.tai[i].mnc_digit3 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_non_consecutive_tacs.mnc_digit3;
+           paging_request->supp_ta_list.tai[i].numoftac = 
+             ue_context_p->emm_context._tai_list.partial_tai_list[i].
+             numberofelements;
+           paging_request->supp_ta_list.tai[i].tac = calloc((paging_request->supp_ta_list.tai[i].numoftac + 1), sizeof(tac_t));
+           for (int t = 0; t < (paging_request->supp_ta_list.tai[i].numoftac + 1); t++ ) {
+             paging_request->supp_ta_list.tai[i].tac[t] = ue_context_p->emm_context._tai_list.partial_tai_list[i].u.tai_one_plmn_non_consecutive_tacs.tac[t];
+           }
+           break;
 
+      case TRACKING_AREA_IDENTITY_LIST_ONE_PLMN_CONSECUTIVE_TACS:
+           paging_request->supp_ta_list.tai[i].mcc_digit1 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_consecutive_tacs.mcc_digit1;
+           paging_request->supp_ta_list.tai[i].mcc_digit2 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_consecutive_tacs.mcc_digit2;
+           paging_request->supp_ta_list.tai[i].mcc_digit3 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_consecutive_tacs.mcc_digit3;
+           paging_request->supp_ta_list.tai[i].mnc_digit1 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_consecutive_tacs.mnc_digit1;
+           paging_request->supp_ta_list.tai[i].mnc_digit2 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_consecutive_tacs.mnc_digit2;
+           paging_request->supp_ta_list.tai[i].mnc_digit3 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_one_plmn_consecutive_tacs.mnc_digit3;
+    
+           paging_request->supp_ta_list.tai[i].numoftac = 
+             ue_context_p->emm_context._tai_list.partial_tai_list[i].
+             numberofelements;
+           paging_request->supp_ta_list.tai[i].tac = calloc((paging_request->supp_ta_list.tai[i].numoftac + 1), sizeof(tac_t));
+           for (int t = 0; t < (paging_request->supp_ta_list.tai[i].numoftac + 1); t++ ) {
+             paging_request->supp_ta_list.tai[i].tac[t] = ( 
+               ue_context_p->emm_context._tai_list.partial_tai_list[i]
+               .u.tai_one_plmn_consecutive_tacs.tac + t);
+           }
+           break;
+
+      case TRACKING_AREA_IDENTITY_LIST_MANY_PLMNS:
+           paging_request->supp_ta_list.tai[i].numoftac = 
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .numberofelements;
+           for (int t = 0;
+               t < (paging_request->supp_ta_list.tai[i].numoftac + 1);
+               t++) {
+           paging_request->supp_ta_list.tai[i].mcc_digit1 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_many_plmn[t].mcc_digit1;
+           paging_request->supp_ta_list.tai[i].mcc_digit2 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_many_plmn[t].mcc_digit2;
+           paging_request->supp_ta_list.tai[i].mcc_digit3 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_many_plmn[t].mcc_digit3;
+           paging_request->supp_ta_list.tai[i].mnc_digit1 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_many_plmn[t].mnc_digit1;
+           paging_request->supp_ta_list.tai[i].mnc_digit2 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_many_plmn[t].mnc_digit2;
+           paging_request->supp_ta_list.tai[i].mnc_digit3 =
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_many_plmn[t].mnc_digit3;
+    
+           paging_request->supp_ta_list.tai[i].tac = calloc((paging_request->supp_ta_list.tai[i].numoftac + 1), sizeof(tac_t));
+           paging_request->supp_ta_list.tai[i].tac[t] = 
+             ue_context_p->emm_context._tai_list.partial_tai_list[i]
+             .u.tai_many_plmn[t].tac;
+           }
+           break;
+
+      default:
+        AssertFatal(
+          0,
+          "BAD TAI list configuration, unknown TAI list type %u",
+          ue_context_p->emm_context._tai_list.partial_tai_list[i].typeoflist);
+      break;
+    }
+  }
   rc = itti_send_msg_to_task(TASK_S1AP, INSTANCE_DEFAULT, message_p);
 
   if (!set_timer) {

@@ -95,6 +95,28 @@ typedef struct ue_description_s {
   struct s1ap_timer_t s1ap_ue_context_rel_timer;
 } ue_description_t;
 
+typedef struct bplmns_s {
+  uint8_t mcc_digit2 : 4; 
+  uint8_t mcc_digit1 : 4; 
+  uint8_t mnc_digit3 : 4; 
+  uint8_t mcc_digit3 : 4; 
+  uint8_t mnc_digit2 : 4; 
+  uint8_t mnc_digit1 : 4; 
+} bplmns_t;
+
+#define S1AP_MAX_BROADCAST_PLMNS 6 //3gpp spec 36413 section-9.1.8.4
+
+typedef struct supported_tai_items_s {
+  uint16_t tac;
+  uint8_t  bplmnlist_count;
+  bplmns_t bplmns[S1AP_MAX_BROADCAST_PLMNS];
+} supported_tai_items_t;
+
+typedef struct supported_ta_list_s {
+  uint8_t list_count;
+  supported_tai_items_t *supported_tai_items;
+} supported_ta_list_t;
+
 /* Main structure representing eNB association over s1ap
  * Generated (or updated) every time a new S1SetupRequest is received.
  */
@@ -123,5 +145,6 @@ typedef struct enb_description_s {
   sctp_stream_id_t next_sctp_stream; ///< Next SCTP stream
   sctp_stream_id_t instreams;  ///< Number of streams avalaible on eNB -> MME
   sctp_stream_id_t outstreams; ///< Number of streams avalaible on MME -> eNB
+  supported_ta_list_t supported_ta_list;
   /*@}*/
 } enb_description_t;

@@ -481,6 +481,31 @@ int s1ap_mme_handle_s1_setup_request(
    */
   ta_ret = s1ap_mme_compare_ta_lists(&s1SetupRequest_p->supportedTAs);
 
+  S1ap_SupportedTAs_t * ta_list = &s1SetupRequest_p->supportedTAs;
+  uint16_t tac_value = 0;
+  uint8_t list_count = ta_list->list.count;
+  enb_association->supported_ta_list.list_count = list_count;
+  enb_association->supported_ta_list.supported_tai_items = calloc(
+    list_count, sizeof(supported_tai_items_t));
+
+  for (int i=0; i < list_count; i++) {
+    S1ap_SupportedTAs_Item_t *ta = NULL;
+    ta = ta_list->list.array[i];
+
+    OCTET_STRING_TO_TAC(&ta->tAC, tac_value);
+
+    enb_association->supported_ta_list.supported_tai_items->tac = tac_value;
+    uint8_t bplmn_list_count = ta->broadcastPLMNs.list.count;
+    enb_association->supported_ta_list.supported_tai_items[i].bplmnlist_count =
+    bplmn_list_count;
+
+    for (int j=0; j < bplmn_list_count; j++) {
+
+      TBCD_TO_PLMN_T(
+        ta->broadcastPLMNs.list.array[j],
+        &enb_association->supported_ta_list.supported_tai_items[i].bplmns[j]);
+    }
+  } 
   /*
    * eNB and MME have no common PLMN
    */
@@ -2530,7 +2555,26 @@ int s1ap_handle_paging_request(
   }
   // Set TAI list
   mme_config_read_lock(&mme_config);
-
+  uint16_t plmn_mcc = 0;
+  uint16_t plmn_mnc = 0;
+  uint16_t plmn_mnc_len = 0;
+  
+  for (int j = 0; j < paging_request->supp_ta_list.numoflists; j++) {
+    for (int t = 0; t < (paging_request->supp_ta_list.tai[j].numoftac + 1); t++) {
+      S1ap_TAIItem_t *tai_item = calloc(1, sizeof(S1ap_TAIItem_t));
+      PLMN_T_TO_MCC_MNC(paging_request->supp_ta_list.tai[j], plmn_mcc, plmn_mnc, plmn_mnc_len);
+      MCC_MNC_TO_PLMNID(
+        plmn_mcc,
+        plmn_mnc,
+        plmn_mnc_len,
+        &tai_item->tAI.pLMNidentity);
+      TAC_TO_ASN1(paging_request->supp_ta_list.tai[j].tac[t], &tai_item->tAI.tAC);
+      tai_item->iE_Extensions = NULL;
+      tai_item->tAI.iE_Extensions = NULL;
+      ASN_SEQUENCE_ADD(&paging_message->taiList, tai_item);
+    }
+  }
+#if 0
   for (int i = 0; i < mme_config.served_tai.nb_tai; i++) {
     S1ap_TAIItem_t *tai_item = calloc(1, sizeof(S1ap_TAIItem_t));
     MCC_MNC_TO_PLMNID(
@@ -2543,6 +2587,7 @@ int s1ap_handle_paging_request(
     tai_item->tAI.iE_Extensions = NULL;
     ASN_SEQUENCE_ADD(&paging_message->taiList, tai_item);
   }
+#endif
 
   mme_config_unlock(&mme_config);
 
@@ -2575,26 +2620,31 @@ int s1ap_handle_paging_request(
   } 
   enb_array = hashtable_ts_get_elements(&state->enbs);
   for (idx = 0; idx < enb_array->num_elements; idx++) {
-     bstring b = blk2bstr(buffer, length);
-     enb_ref_p = (enb_description_t *)(uintptr_t) enb_array->elements[idx];
+    bstring b = blk2bstr(buffer, length);
+    enb_ref_p = (enb_description_t *)(uintptr_t) enb_array->elements[idx];
     if (enb_ref_p->s1_state == S1AP_READY) {
-    OAILOG_DEBUG(
-      LOG_S1AP,
-      "enb_ref_p->s1_state == S1AP_READY  (assoc_id = %d)\n", 
-      enb_ref_p->sctp_assoc_id);
-    OAILOG_INFO(
-      LOG_S1AP,
-      "Sending Paging Request message to eNB of sctp (assoc_id = %d)\n", 
-      enb_ref_p->sctp_assoc_id);
-    rc = s1ap_mme_itti_send_sctp_request(
-      &b,
-      enb_ref_p->sctp_assoc_id,//paging_request->sctp_assoc_id,
-      0,  // Stream id 0 for non UE related
-          // S1AP message
-      0); // mme_ue_s1ap_id 0 because UE
-          // in idle
+      OAILOG_DEBUG(
+        LOG_S1AP,
+        "enb_ref_p->s1_state == S1AP_READY  (assoc_id = %d)\n", 
+        enb_ref_p->sctp_assoc_id);
+       
+      for (int i = 0; i < enb_ref_p->supported_ta_list.list_count; i++) {
+        for (int j = 0; j < paging_request->supp_ta_list.numoflists; j++) {
+          for (int t = 0; t < (paging_request->supp_ta_list.tai[j].numoftac + 1); t++) {
+            if (enb_ref_p->supported_ta_list.supported_tai_items[i].tac ==  paging_request->supp_ta_list.tai[j].tac[t]) {
+               rc = s1ap_mme_itti_send_sctp_request(
+                 &b,
+                 enb_ref_p->sctp_assoc_id,//paging_request->sctp_assoc_id,
+                 0,  // Stream id 0 for non UE related
+                     // S1AP message
+                 0); // mme_ue_s1ap_id 0 because UE
+                     // in idle
+            }
+          }
+        }
+      }
     }
- }
+  }
  free(buffer);
   if (rc != RETURNok) {
     OAILOG_ERROR(
